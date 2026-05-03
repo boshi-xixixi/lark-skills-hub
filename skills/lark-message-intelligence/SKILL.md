@@ -1,213 +1,142 @@
 ---
 name: lark-message-intelligence
 version: 1.0.0
-description: "智能消息监听与分析系统：多群聊支持、AI自动分类、自学习FAQ、行动项自动提取、群聊健康度仪表盘、智能告警。当用户需要：消息监听、群聊分析、FAQ机器人、行动项追踪、关键词告警时使用。"
+description: "多群聊消息监听与分析系统：实时采集飞书群聊消息，AI智能分类、自学习FAQ、行动项提取、关键词告警。当用户需要：群聊监听、FAQ机器人、行动项追踪、关键词告警时使用。"
 metadata:
   requires:
     bins: ["lark-cli"]
-  cliHelp: "lark-cli im --help && lark-cli event --help"
 ---
 
-# Lark Message Intelligence — 智能消息监听与分析
+# Lark Message Intelligence — 多群聊消息监听
 
-> 一句话描述：不止于监听，更是群聊的智能大脑 — 多群聊支持 + AI自动分类 + 自学习FAQ + 行动项追踪 + 智能告警
+> 适配 OpenClaw / Trae / Cursor 等 AI Agent，后台守护运行，持续监听群聊动态
 
-## 核心能力对比
+## 核心能力
 
-| 能力 | 基础监听 | Lark Message Intelligence |
-|------|---------|--------------------------|
-| 群聊数量 | 单一群聊 | 多群聊同时监听 |
-| 消息分类 | 预设规则 | AI + 自学习持续优化 |
-| FAQ维护 | 手动添加 | 用户纠正时自动学习 |
-| 行动项 | 需手动创建 | 自动识别并创建飞书任务 |
-| 健康度 | 无 | 消息量/响应时间/热门话题仪表盘 |
-| 告警 | 无 | blocker关键词实时告警 |
+| 能力 | 说明 |
+|------|------|
+| 多群聊支持 | 同时监听多个群聊，按重要性加权 |
+| 实时分类 | 消息自动分类：紧急/重要/常规/参考 |
+| FAQ匹配 | 知识库语义匹配，自动回复常见问题 |
+| 行动项提取 | 自动识别"需要XXX做"、"请XXX处理"等模式 |
+| 智能告警 | blocker关键词（故障/P0/延期）即时通知 |
+| 健康度仪表盘 | 群聊消息量、活跃度、响应时间分析 |
 
 ## 工作流程
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Step 1: 配置阶段 (一次性)                                    │
-│   ├─ 选择要监听的群聊 (可多选)                               │
-│   ├─ 设置分类标签体系                                        │
-│   ├─ 配置FAQ知识库 (可选)                                    │
-│   └─ 设置告警关键词                                          │
+│ 启动监听 (后台守护)                                          │
+│   └─ python3 scripts/listener.py --start --daemon          │
 └─────────────────────────┬───────────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ Step 2: 持续监听 (后台运行)                                   │
-│   ├─ 实时接收群聊消息                                         │
-│   ├─ AI语义分类                                              │
-│   ├─ FAQ匹配回答                                             │
-│   ├─ 行动项提取                                               │
-│   └─ 关键词告警                                               │
+│ 消息处理 (循环)                                              │
+│   ├─ 采集最新消息                                            │
+│   ├─ 关键词匹配 → 触发告警                                  │
+│   ├─ FAQ语义匹配 → 自动回复                                 │
+│   ├─ 行动项模式识别 → 创建飞书任务                          │
+│   └─ 分类标签打标                                           │
 └─────────────────────────┬───────────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ Step 3: 数据分析 (按需生成)                                   │
-│   ├─ 群聊健康度仪表盘                                        │
-│   ├─ 热门话题统计                                            │
-│   ├─ 响应时间分析                                            │
-│   └─ 行动项汇总                                              │
-└─────────────────────────┬───────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│ Step 4: 输出与通知                                           │
-│   ├─ 每日摘要推送到指定群聊                                  │
-│   ├─ 告警即时通知                                            │
-│   ├─ 定期报告导出                                            │
-│   └─ 知识库更新                                              │
+│ 数据汇总 (按需)                                              │
+│   ├─ 每日摘要: python3 scripts/listener.py --daily-digest   │
+│   ├─ 健康度报告: python3 scripts/dashboard.py              │
+│   └─ 行动项列表: python3 scripts/action_extractor.py --list │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 命令行使用
+## Agent 使用指南
+
+### 触发方式
+
+```
+"开启群聊监听"
+"监听群聊"
+"看看群里在聊什么"
+"今天群里有什么"
+"群聊摘要"
+"添加FAQ"
+"查看行动项"
+"群聊健康度"
+```
+
+### 执行流程
 
 ```bash
-# 初始化：选择要监听的群聊
+# 1. 初始化 (仅首次)
 python3 scripts/listener.py --init
 
-# 启动监听 (前台，用于调试)
-python3 scripts/listener.py --start
-
-# 启动监听 (后台守护模式)
+# 2. 启动监听 (后台)
 python3 scripts/listener.py --start --daemon
 
-# 查看监听状态
+# 3. 查看监听状态
 python3 scripts/listener.py --status
 
-# 生成群聊健康度报告
-python3 scripts/dashboard.py --group <群聊名> --period week
-
-# 管理FAQ知识库
-python3 scripts/faq_manager.py --add "如何连VPN?" "访问内网资源请使用VPN..."
-python3 scripts/faq_manager.py --list
-python3 scripts/faq_manager.py --remove <id>
-
-# 查看行动项
-python3 scripts/action_extractor.py --list
-
-# 手动触发每日摘要
+# 4. 生成每日摘要
 python3 scripts/listener.py --daily-digest
+
+# 5. 生成健康度报告
+python3 scripts/dashboard.py --period week --output report.html
+
+# 6. FAQ管理
+python3 scripts/faq_manager.py --add "如何部署?" "执行git pull"
+python3 scripts/faq_manager.py --list
+
+# 7. 行动项查看
+python3 scripts/action_extractor.py --list
 ```
 
 ## 分类标签体系
 
 ```
-📌 类别层级:
+📌 分类层级:
 ├── 🔴 紧急 (会自动告警)
 │   ├── P0故障
-│   ├── 安全问题
-│   └── 数据泄露
+│   └── 安全问题
 ├── 🟠 重要
 │   ├── 需要跟进
-│   ├── 决策请求
-│   └── 外部依赖
+│   └── 决策请求
 ├── 🟡 常规
-│   ├── 内部讨论
-│   ├── 同步信息
-│   └── 日常沟通
+│   └── 内部讨论
 └── 🟢 参考
-    ├── 分享链接
-    ├── 文档更新
-    └── 其他
+    └── 分享链接
 ```
 
-## 智能告警关键词
+## 告警关键词 (可配置)
 
 ```yaml
-# 默认告警关键词 (可自定义)
-blocker:
-  - "故障"
-  - "挂了"
-  - "紧急"
-  - "P0"
-  - "数据丢失"
-
-risk:
-  - "延期"
-  - "风险"
-  - "可能无法"
-  - "超出预期"
-
-success:
-  - "完成了"
-  - "已解决"
-  - "上线了"
-  - "搞定了"
+blocker: "故障" / "挂了" / "P0" / "紧急"
+risk: "延期" / "风险" / "可能无法"
+success: "完成了" / "上线了" / "搞定"
 ```
 
-## 行动项识别规则
+## 命令行完整参考
 
-```python
-# 自动识别的行动项模式
-patterns = [
-    r"需要(.+?)来",
-    r"(.+?)负责",
-    r"(.+?)跟进",
-    r"(.+?)完成",
-    r"谁(.+?)",
-    r"请(.+?)处理",
-    r"@(\w+).+?做",
-]
-```
+```bash
+# 监听控制
+python3 scripts/listener.py --init                    # 初始化配置
+python3 scripts/listener.py --start                   # 前台启动
+python3 scripts/listener.py --start --daemon         # 后台守护
+python3 scripts/listener.py --status                  # 查看状态
+python3 scripts/listener.py --daily-digest            # 每日摘要
 
-## 输出示例
+# FAQ管理
+python3 scripts/faq_manager.py --add "问题" "回答"
+python3 scripts/faq_manager.py --list
+python3 scripts/faq_manager.py --remove <faq_id>
+python3 scripts/faq_manager.py --search <关键词>
 
-### 每日摘要
+# 行动项
+python3 scripts/action_extractor.py --list
+python3 scripts/action_extractor.py --extract "需要张三来处理这个问题"
+python3 scripts/action_extractor.py --sync
 
-```markdown
-# 📊 群聊智能摘要 — 2026-04-14
-
-## 📈 概览
-| 群聊 | 消息数 | 发言人数 | 紧急 | 重要 | 行动项 |
-|------|--------|---------|------|------|--------|
-| 产品需求群 | 47 | 12 | 0 | 3 | 5 |
-| 技术交流群 | 32 | 8 | 1 | 2 | 3 |
-| 项目进度群 | 28 | 6 | 0 | 4 | 4 |
-
-## 🔥 热门话题
-1. Q2产品上线方案 (23条相关讨论)
-2. 客户反馈处理流程 (15条相关讨论)
-3. 新人入职指南 (8条相关讨论)
-
-## ✅ 行动项汇总 (12项)
-- [ ] @张三 跟进客户反馈系统对接 (产品需求群)
-- [ ] @李四 评审技术方案文档 (技术交流群)
-- [x] 已完成5项行动项
-
-## ⚠️ 待关注
-- [技术交流群] 出现1条紧急消息: "P0故障告警..."
-
-## 📚 新增FAQ
-- "如何申请服务器权限?" → 已添加到知识库
-```
-
-### 健康度仪表盘指标
-
-| 指标 | 定义 | 健康值 |
-|------|------|--------|
-| 消息量趋势 | 日消息数变化 | 稳定或上升 |
-| 响应时间 | 提出问题到首次响应 | < 30分钟 |
-| 行动项完成率 | 创建的行动项完成比例 | > 80% |
-| 紧急消息占比 | 紧急消息/总消息 | < 5% |
-| 参与度 | 发言人数/群总人数 | > 30% |
-
-## 自学习机制
-
-```
-用户纠正分类示例:
-
-A: 这个消息归类为"常规讨论"，但实际是"重要决策"
-B: /reclassify <消息ID> 重要-决策请求
-
-系统自动:
-1. 更新该消息分类
-2. 学习用户偏好
-3. 优化分类模型
-4. 后续类似消息自动识别
+# 健康度仪表盘
+python3 scripts/dashboard.py --period week --output report.html
 ```
 
 ## 权限要求
@@ -216,42 +145,12 @@ B: /reclassify <消息ID> 重要-决策请求
 # 基础权限
 lark-cli auth login --domain im,message,contact
 
-# 监听权限 (需要事件订阅)
-lark-cli auth login --scope "im:message:receive"
-
-# 任务创建权限 (行动项)
-lark-cli auth login --scope "task:task:write"
-
-# 多维表格权限 (数据存储)
-lark-cli auth login --domain base
+# 任务创建权限
+lark-cli auth login --domain task
 ```
 
-## 技术架构
+## 数据存储
 
-```
-┌─────────────┐    ┌──────────────┐    ┌─────────────┐
-│  飞书IM事件  │───▶│  Listener    │───▶│  Classifier │
-│  WebSocket   │    │  (事件接收)   │    │  (AI分类)    │
-└─────────────┘    └──────────────┘    └──────┬──────┘
-                                              │
-                    ┌──────────────────────────┼──────────────────────────┐
-                    │                          │                          │
-                    ▼                          ▼                          ▼
-            ┌───────────────┐          ┌───────────────┐          ┌───────────────┐
-            │   FAQ Matcher │          │ Action Extract│          │   Alert Mgr   │
-            │  (知识库匹配)   │          │  (行动项提取)   │          │  (智能告警)    │
-            └───────┬───────┘          └───────┬───────┘          └───────┬───────┘
-                    │                          │                          │
-                    ▼                          ▼                          ▼
-            ┌───────────────┐          ┌───────────────┐          ┌───────────────┐
-            │  飞书消息回复  │          │ 飞书任务创建   │          │  飞书消息通知  │
-            └───────────────┘          └───────────────┘          └───────────────┘
-```
-
-## 依赖
-
-```bash
-pip3 install python-dotenv requests
-# 可选: 使用LLM进行更精准的分类
-# 配置 LLM_API_KEY 环境变量
-```
+- 配置: `~/.lark-message-intelligence/config.json`
+- 知识库: `~/.lark-message-intelligence/knowledge_base.json`
+- 行动项: `~/.lark-message-intelligence/action_items.json`
