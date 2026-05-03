@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lark Skills Hub — 3 个飞书 CLI Skill，让 AI 成为你的效率引擎</title>
+  <meta name="description" content="基于飞书 CLI 的 3 款 AI Agent Skills：智能日报生成器、全生命周期项目管理器、视频评论分析器。">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #080c14;
+      --bg-2: #0d1424;
+      --surface: #111827;
+      --border: #1e2d45;
+      --text: #e8edf5;
+      --text-2: #8b9ab5;
+      --text-3: #4a5a7a;
+      --blue: #3b82f6;
+      --blue-glow: rgba(59, 130, 246, 0.15);
+      --orange: #f97316;
+      --orange-glow: rgba(249, 115, 22, 0.15);
+      --green: #10b981;
+      --green-glow: rgba(16, 185, 129, 0.15);
+      --purple: #a855f7;
+      --purple-glow: rgba(168, 85, 247, 0.15);
+      --card-radius: 20px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    ::selection {
+      background: var(--blue);
+      color: white;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 80px 24px 60px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 900px;
+      height: 900px;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .hero-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px 6px 8px;
+      background: var(--blue-glow);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--blue);
+      margin-bottom: 32px;
+      animation: fadeInUp 0.8s ease-out 0.1s both;
+      letter-spacing: 0.02em;
+    }
+
+    .hero-badge .dot {
+      width: 6px;
+      height: 6px;
+      background: var(--blue);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .hero-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: clamp(48px, 8vw, 88px);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      margin-bottom: 24px;
+      max-width: 900px;
+      animation: fadeInUp 0.8s ease-out 0.2s both;
+    }
+
+    .hero-title .gradient-text {
+      background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: clamp(16px, 2.5vw, 20px);
+      color: var(--text-2);
+      max-width: 560px;
+      margin-bottom: 48px;
+      font-weight: 400;
+      animation: fadeInUp 0.8s ease-out 0.3s both;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+      animation: fadeInUp 0.8s ease-out 0.4s both;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      background: var(--blue);
+      color: white;
+      font-weight: 600;
+      font-size: 15px;
+      border-radius: 12px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      background: transparent;
+      color: var(--text);
+      font-weight: 600;
+      font-size: 15px;
+      border-radius: 12px;
+      text-decoration: none;
+      border: 1px solid var(--border);
+      transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--text-2);
+      background: rgba(255, 255, 255, 0.03);
+      transform: translateY(-2px);
+    }
+
+    .hero-scroll {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-3);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      animation: fadeInUp 0.8s ease-out 0.6s both;
+    }
+
+    .scroll-line {
+      width: 1px;
+      height: 40px;
+      background: linear-gradient(to bottom, var(--text-3), transparent);
+      animation: scrollPulse 2s ease-in-out infinite;
+    }
+
+    .section {
+      padding: 120px 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: clamp(32px, 5vw, 52px);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+
+    .section-desc {
+      font-size: 17px;
+      color: var(--text-2);
+      max-width: 520px;
+      line-height: 1.7;
+    }
+
+    .skills-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-top: 64px;
+    }
+
+    @media (max-width: 900px) {
+      .skills-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+    }
+
+    .skill-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--card-radius);
+      padding: 36px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .skill-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .skill-card:hover {
+      transform: translateY(-6px);
+      border-color: transparent;
+    }
+
+    .skill-card:hover::before {
+      opacity: 1;
+    }
+
+    .skill-card.card-daily::before { background: linear-gradient(90deg, var(--blue), var(--purple)); }
+    .skill-card.card-daily:hover { box-shadow: 0 20px 60px var(--blue-glow); }
+
+    .skill-card.card-project::before { background: linear-gradient(90deg, var(--orange), var(--green)); }
+    .skill-card.card-project:hover { box-shadow: 0 20px 60px var(--orange-glow); }
+
+    .skill-card.card-video::before { background: linear-gradient(90deg, var(--green), var(--blue)); }
+    .skill-card.card-video:hover { box-shadow: 0 20px 60px var(--green-glow); }
+
+    .skill-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    .card-daily .skill-icon { background: var(--blue-glow); }
+    .card-project .skill-icon { background: var(--orange-glow); }
+    .card-video .skill-icon { background: var(--green-glow); }
+
+    .skill-number {
+      position: absolute;
+      top: 20px;
+      right: 24px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-3);
+      letter-spacing: 0.05em;
+    }
+
+    .skill-name {
+      font-family: 'Outfit', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      letter-spacing: -0.01em;
+    }
+
+    .skill-tagline {
+      font-size: 14px;
+      color: var(--text-2);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .skill-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 28px;
+      flex: 1;
+    }
+
+    .skill-features li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--text-2);
+    }
+
+    .skill-features li .check {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .card-daily .skill-features li .check { background: var(--blue-glow); color: var(--blue); }
+    .card-project .skill-features li .check { background: var(--orange-glow); color: var(--orange); }
+    .card-video .skill-features li .check { background: var(--green-glow); color: var(--green); }
+
+    .skill-trigger {
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 13px;
+      color: var(--text-2);
+      font-style: italic;
+      margin-top: auto;
+    }
+
+    .skill-trigger strong {
+      color: var(--text);
+      font-style: normal;
+      font-weight: 500;
+    }
+
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .how-it-works {
+      background: var(--bg-2);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 32px;
+      margin-top: 64px;
+    }
+
+    @media (max-width: 900px) {
+      .steps {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 500px) {
+      .steps {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .step {
+      text-align: center;
+      padding: 24px;
+    }
+
+    .step-number {
+      font-family: 'Outfit', sans-serif;
+      font-size: 48px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+      margin-bottom: 16px;
+    }
+
+    .step-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .step-desc {
+      font-size: 14px;
+      color: var(--text-2);
+      line-height: 1.6;
+    }
+
+    .cta-section {
+      text-align: center;
+      padding: 140px 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      bottom: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 400px;
+      background: radial-gradient(ellipse, rgba(59, 130, 246, 0.1) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .cta-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: clamp(36px, 6vw, 64px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .cta-desc {
+      font-size: 18px;
+      color: var(--text-2);
+      margin-bottom: 40px;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .footer {
+      padding: 40px 24px;
+      text-align: center;
+      border-top: 1px solid var(--border);
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .footer-logo {
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a {
+      color: var(--text-2);
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover {
+      color: var(--text);
+    }
+
+    .footer-copy {
+      font-size: 13px;
+      color: var(--text-3);
+    }
+
+    .floating-nav {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      display: flex;
+      gap: 8px;
+      z-index: 100;
+      opacity: 0;
+      transform: translateY(-10px);
+      transition: all 0.3s ease;
+    }
+
+    .floating-nav.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .nav-btn {
+      padding: 8px 16px;
+      background: rgba(17, 24, 39, 0.8);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-2);
+      font-size: 13px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .nav-btn:hover {
+      color: var(--text);
+      border-color: var(--text-2);
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(24px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    @keyframes scrollPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .skill-card {
+      animation: fadeInUp 0.8s ease-out both;
+    }
+
+    .skill-card:nth-child(1) { animation-delay: 0.1s; }
+    .skill-card:nth-child(2) { animation-delay: 0.2s; }
+    .skill-card:nth-child(3) { animation-delay: 0.3s; }
+
+    .step {
+      animation: fadeInUp 0.8s ease-out both;
+    }
+
+    .step:nth-child(1) { animation-delay: 0.1s; }
+    .step:nth-child(2) { animation-delay: 0.2s; }
+    .step:nth-child(3) { animation-delay: 0.3s; }
+    .step:nth-child(4) { animation-delay: 0.4s; }
+  </style>
+</head>
+<body>
+
+  <div class="floating-nav" id="floatingNav">
+    <a href="#skills" class="nav-btn">Skills</a>
+    <a href="#how" class="nav-btn">How it works</a>
+    <a href="https://github.com/boshi-xixixi/lark-skills-hub" class="nav-btn" target="_blank" style="color: var(--blue);">⭐ Star</a>
+  </div>
+
+  <section class="hero">
+    <div class="hero-grid"></div>
+
+    <div class="hero-badge">
+      <span class="dot"></span>
+      Powered by 飞书 CLI × AI Agent
+    </div>
+
+    <h1 class="hero-title">
+      让 AI 成为你的<br>
+      <span class="gradient-text">效率引擎</span>
+    </h1>
+
+    <p class="hero-sub">
+      3 款飞书 CLI Skills，涵盖日报生成、项目管理、视频评论分析。<br>
+      接入 Trae / Cursor / OpenClaw，一句话触发，零操作成本。
+    </p>
+
+    <div class="hero-actions">
+      <a href="https://github.com/boshi-xixixi/lark-skills-hub" class="btn-primary" target="_blank">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        GitHub
+      </a>
+      <a href="#skills" class="btn-secondary">
+        了解更多 →
+      </a>
+    </div>
+
+    <div class="hero-scroll">
+      <span>Scroll</span>
+      <div class="scroll-line"></div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section class="section" id="skills">
+    <div class="section-label">Skills</div>
+    <h2 class="section-title">每一个 Skill，都是一个垂直场景的 AI Agent</h2>
+    <p class="section-desc">基于飞书 CLI 原生构建，AI Agent 读取 SKILL.md 即可自动执行完整工作流。你只需说一句人话。</p>
+
+    <div class="skills-grid">
+      <div class="skill-card card-daily">
+        <div class="skill-number">01</div>
+        <div class="skill-icon">📋</div>
+        <h3 class="skill-name">Lark Daily Report</h3>
+        <p class="skill-tagline">AI 智能日报 / 周报生成器 — 你什么都不用写</p>
+        <ul class="skill-features">
+          <li><span class="check">✓</span>自动采集日历、任务、文档、IM 数据</li>
+          <li><span class="check">✓</span>AI 智能分析，生成结构化工作总结</li>
+          <li><span class="check">✓</span>效率洞察 + 行动建议</li>
+          <li><span class="check">✓</span>一键发布到飞书文档或群聊</li>
+        </ul>
+        <div class="skill-trigger">试试说：<strong>"帮我写今天的日报"</strong></div>
+      </div>
+
+      <div class="skill-card card-project">
+        <div class="skill-number">02</div>
+        <div class="skill-icon">🚀</div>
+        <h3 class="skill-name">Lark Project Manager</h3>
+        <p class="skill-tagline">全生命周期项目管理器 — 用飞书原生生态替代 Jira</p>
+        <ul class="skill-features">
+          <li><span class="check">✓</span>一键创建项目空间（文件夹 + 文档 + 看板）</li>
+          <li><span class="check">✓</span>可视化进度看板 + 风险预警</li>
+          <li><span class="check">✓</span>会议纪要自动关联，提取行动项</li>
+          <li><span class="check">✓</span>AI 驱动的项目周报</li>
+        </ul>
+        <div class="skill-trigger">试试说：<strong>"创建一个叫 Q2 的项目"</strong></div>
+      </div>
+
+      <div class="skill-card card-video">
+        <div class="skill-number">03</div>
+        <div class="skill-icon">🎬</div>
+        <h3 class="skill-name">Lark Video Comment Analysis</h3>
+        <p class="skill-tagline">视频评论 AI 分析器 — 深度挖掘评论区价值</p>
+        <ul class="skill-features">
+          <li><span class="check">✓</span>B站 / 抖音评论自动抓取</li>
+          <li><span class="check">✓</span>AI 情感分析 + 关键词提取</li>
+          <li><span class="check">✓</span>飞书多维表格 + 数据仪表盘</li>
+          <li><span class="check">✓</span>一键生成分析报告</li>
+        </ul>
+        <div class="skill-trigger">试试说：<strong>"分析这个 B 站视频的评论"</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section class="section how-it-works" id="how" style="max-width: 100%; padding-left: 0; padding-right: 0;">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 0 24px;">
+      <div class="section-label">How it works</div>
+      <h2 class="section-title">4 步，开始你的 AI 效率之旅</h2>
+      <p class="section-desc">不需要复杂的配置。克隆、安装、告诉 AI 你要什么，就这么简单。</p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">01</div>
+          <h4 class="step-title">安装飞书 CLI</h4>
+          <p class="step-desc">一行命令安装飞书官方 CLI 工具，完成账号认证</p>
+        </div>
+        <div class="step">
+          <div class="step-number">02</div>
+          <h4 class="step-title">克隆本仓库</h4>
+          <p class="step-desc">获取所有 Skills，包含独立脚本和 AI Agent 指令</p>
+        </div>
+        <div class="step">
+          <div class="step-number">03</div>
+          <h4 class="step-title">配置到 AI Agent</h4>
+          <p class="step-desc">将 skills 目录配置到 Trae / Cursor / OpenClaw</p>
+        </div>
+        <div class="step">
+          <div class="step-number">04</div>
+          <h4 class="step-title">开始使用</h4>
+          <p class="step-desc">用自然语言告诉 AI 你要什么，Agent 自动完成全流程</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section class="cta-section">
+    <h2 class="cta-title">让 Star 见证你的效率升级 ⭐</h2>
+    <p class="cta-desc">完全开源，免费使用。基于飞书 CLI 原生开发，为 AI Agent 而生。</p>
+    <div class="hero-actions" style="animation-delay: 0.1s;">
+      <a href="https://github.com/boshi-xixixi/lark-skills-hub" class="btn-primary" target="_blank">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        给个 Star
+      </a>
+      <a href="https://github.com/larksuite/cli" class="btn-secondary" target="_blank">
+        了解更多 飞书 CLI
+      </a>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-logo">Lark Skills Hub</div>
+    <div class="footer-links">
+      <a href="https://github.com/boshi-xixixi/lark-skills-hub" target="_blank">GitHub</a>
+      <a href="https://github.com/larksuite/cli" target="_blank">飞书 CLI</a>
+      <a href="https://github.com/boshi-xixixi/lark-skills-hub/stargazers" target="_blank">Stargazers</a>
+    </div>
+    <div class="footer-copy">MIT License · 2026 · Built with ❤️ and 飞书 CLI</div>
+  </footer>
+
+  <script>
+    const nav = document.getElementById('floatingNav');
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            nav.classList.add('visible');
+          } else {
+            nav.classList.remove('visible');
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    document.querySelectorAll('section').forEach((section) => {
+      observer.observe(section);
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>
