@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lark Skills Hub — 3 个飞书 CLI Skill，让 AI 成为你的效率引擎</title>
-  <meta name="description" content="基于飞书 CLI 的 3 款 AI Agent Skills：智能日报生成器、全生命周期项目管理器、视频评论分析器。">
+  <title>Lark Skills Hub — 6 个飞书 CLI Skills，让 AI 成为你的效率引擎</title>
+  <meta name="description" content="基于飞书 CLI 的 6 款 AI Agent Skills：智能日报、项目管理、视频评论、Sprint回顾、消息智能、内容聚合。">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,6 +27,12 @@
       --green-glow: rgba(16, 185, 129, 0.15);
       --purple: #a855f7;
       --purple-glow: rgba(168, 85, 247, 0.15);
+      --pink: #ec4899;
+      --pink-glow: rgba(236, 72, 153, 0.15);
+      --teal: #14b8a6;
+      --teal-glow: rgba(20, 184, 166, 0.15);
+      --indigo: #6366f1;
+      --indigo-glow: rgba(99, 102, 241, 0.15);
       --card-radius: 20px;
     }
 
@@ -310,6 +316,15 @@
     .skill-card.card-video::before { background: linear-gradient(90deg, var(--green), var(--blue)); }
     .skill-card.card-video:hover { box-shadow: 0 20px 60px var(--green-glow); }
 
+    .skill-card.card-retro::before { background: linear-gradient(90deg, var(--purple), var(--pink)); }
+    .skill-card.card-retro:hover { box-shadow: 0 20px 60px var(--purple-glow); }
+
+    .skill-card.card-message::before { background: linear-gradient(90deg, var(--teal), var(--indigo)); }
+    .skill-card.card-message:hover { box-shadow: 0 20px 60px var(--teal-glow); }
+
+    .skill-card.card-content::before { background: linear-gradient(90deg, var(--indigo), var(--purple)); }
+    .skill-card.card-content:hover { box-shadow: 0 20px 60px var(--indigo-glow); }
+
     .skill-icon {
       width: 52px;
       height: 52px;
@@ -325,6 +340,9 @@
     .card-daily .skill-icon { background: var(--blue-glow); }
     .card-project .skill-icon { background: var(--orange-glow); }
     .card-video .skill-icon { background: var(--green-glow); }
+    .card-retro .skill-icon { background: var(--purple-glow); }
+    .card-message .skill-icon { background: var(--teal-glow); }
+    .card-content .skill-icon { background: var(--indigo-glow); }
 
     .skill-number {
       position: absolute;
@@ -384,6 +402,9 @@
     .card-daily .skill-features li .check { background: var(--blue-glow); color: var(--blue); }
     .card-project .skill-features li .check { background: var(--orange-glow); color: var(--orange); }
     .card-video .skill-features li .check { background: var(--green-glow); color: var(--green); }
+    .card-retro .skill-features li .check { background: var(--purple-glow); color: var(--purple); }
+    .card-message .skill-features li .check { background: var(--teal-glow); color: var(--teal); }
+    .card-content .skill-features li .check { background: var(--indigo-glow); color: var(--indigo); }
 
     .skill-trigger {
       padding: 12px 16px;
@@ -605,6 +626,9 @@
     .skill-card:nth-child(1) { animation-delay: 0.1s; }
     .skill-card:nth-child(2) { animation-delay: 0.2s; }
     .skill-card:nth-child(3) { animation-delay: 0.3s; }
+    .skill-card:nth-child(4) { animation-delay: 0.4s; }
+    .skill-card:nth-child(5) { animation-delay: 0.5s; }
+    .skill-card:nth-child(6) { animation-delay: 0.6s; }
 
     .step {
       animation: fadeInUp 0.8s ease-out both;
@@ -638,7 +662,8 @@
     </h1>
 
     <p class="hero-sub">
-      3 款飞书 CLI Skills，涵盖日报生成、项目管理、视频评论分析。<br>
+      6 款飞书 CLI Skills，涵盖日报生成、项目管理、视频评论分析、<br>
+      Sprint回顾、消息智能监听、内容聚合等多个垂直场景。<br>
       接入 Trae / Cursor / OpenClaw，一句话触发，零操作成本。
     </p>
 
@@ -706,6 +731,48 @@
           <li><span class="check">✓</span>一键生成分析报告</li>
         </ul>
         <div class="skill-trigger">试试说：<strong>"分析这个 B 站视频的评论"</strong></div>
+      </div>
+
+      <div class="skill-card card-retro">
+        <div class="skill-number">04</div>
+        <div class="skill-icon">📊</div>
+        <h3 class="skill-name">Lark Smart Retro</h3>
+        <p class="skill-tagline">智能Sprint回顾 — 超越数据汇总的 AI 归因分析</p>
+        <ul class="skill-features">
+          <li><span class="check">✓</span>ECharts可视化图表 (热力图/仪表盘)</li>
+          <li><span class="check">✓</span>AI归因分析：回答"为什么"而非"是什么"</li>
+          <li><span class="check">✓</span>跨Sprint行动项自动追踪</li>
+          <li><span class="check">✓</span>团队匿名对标 + 与日报打通</li>
+        </ul>
+        <div class="skill-trigger">试试说：<strong>"帮我回顾一下上周的工作"</strong></div>
+      </div>
+
+      <div class="skill-card card-message">
+        <div class="skill-number">05</div>
+        <div class="skill-icon">🔔</div>
+        <h3 class="skill-name">Lark Message Intelligence</h3>
+        <p class="skill-tagline">消息智能监听 — 多群聊 + AI分类 + 自学习FAQ</p>
+        <ul class="skill-features">
+          <li><span class="check">✓</span>多群聊同时监听，按重要性加权</li>
+          <li><span class="check">✓</span>AI自动分类 + 用户纠正时自学习</li>
+          <li><span class="check">✓</span>行动项自动识别并创建飞书任务</li>
+          <li><span class="check">✓</span>群聊健康度仪表盘 + 关键词告警</li>
+        </ul>
+        <div class="skill-trigger">试试说：<strong>"开启群聊监听"</strong></div>
+      </div>
+
+      <div class="skill-card card-content">
+        <div class="skill-number">06</div>
+        <div class="skill-icon">📚</div>
+        <h3 class="skill-name">Lark Content Hub</h3>
+        <p class="skill-tagline">内容聚合中心 — 多平台采集 + AI摘要 + 知识图谱</p>
+        <ul class="skill-features">
+          <li><span class="check">✓</span>10+平台支持 (微信/知乎/小红书/微博等)</li>
+          <li><span class="check">✓</span>AI自动生成摘要 + 标签 + 核心观点</li>
+          <li><span class="check">✓</span>相似文章去重检测</li>
+          <li><span class="check">✓</span>知识图谱关联 + 相关推荐</li>
+        </ul>
+        <div class="skill-trigger">试试说：<strong>"帮我收藏这篇文章"</strong></div>
       </div>
     </div>
   </section>
