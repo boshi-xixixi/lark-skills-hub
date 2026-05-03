@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lark Skills Hub — 6 个飞书 CLI Skills，让 AI 成为你的效率引擎</title>
-  <meta name="description" content="基于飞书 CLI 的 6 款 AI Agent Skills：智能日报、项目管理、视频评论、Sprint回顾、消息智能、内容聚合。">
+  <title>Lark Skills Hub — 9 个飞书 CLI Skills，让 AI 成为你的效率引擎</title>
+  <meta name="description" content="基于飞书 CLI 的 9 款 AI Agent Skills：智能日报、项目管理、视频评论、Sprint回顾、消息智能、内容聚合、考勤分析、邮件摘要、外勤追踪。">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,6 +23,8 @@
       --blue-glow: rgba(59, 130, 246, 0.15);
       --orange: #f97316;
       --orange-glow: rgba(249, 115, 22, 0.15);
+      --yellow: #eab308;
+      --yellow-glow: rgba(234, 179, 8, 0.15);
       --green: #10b981;
       --green-glow: rgba(16, 185, 129, 0.15);
       --purple: #a855f7;
@@ -325,6 +327,15 @@
     .skill-card.card-content::before { background: linear-gradient(90deg, var(--indigo), var(--purple)); }
     .skill-card.card-content:hover { box-shadow: 0 20px 60px var(--indigo-glow); }
 
+    .skill-card.card-attendance::before { background: linear-gradient(90deg, var(--pink), var(--orange)); }
+    .skill-card.card-attendance:hover { box-shadow: 0 20px 60px var(--pink-glow); }
+
+    .skill-card.card-mail::before { background: linear-gradient(90deg, var(--green), var(--teal)); }
+    .skill-card.card-mail:hover { box-shadow: 0 20px 60px var(--green-glow); }
+
+    .skill-card.card-location::before { background: linear-gradient(90deg, var(--orange), var(--yellow)); }
+    .skill-card.card-location:hover { box-shadow: 0 20px 60px var(--orange-glow); }
+
     .skill-icon {
       width: 52px;
       height: 52px;
@@ -343,6 +354,9 @@
     .card-retro .skill-icon { background: var(--purple-glow); }
     .card-message .skill-icon { background: var(--teal-glow); }
     .card-content .skill-icon { background: var(--indigo-glow); }
+    .card-attendance .skill-icon { background: var(--pink-glow); }
+    .card-mail .skill-icon { background: var(--green-glow); }
+    .card-location .skill-icon { background: var(--orange-glow); }
 
     .skill-number {
       position: absolute;
@@ -405,6 +419,9 @@
     .card-retro .skill-features li .check { background: var(--purple-glow); color: var(--purple); }
     .card-message .skill-features li .check { background: var(--teal-glow); color: var(--teal); }
     .card-content .skill-features li .check { background: var(--indigo-glow); color: var(--indigo); }
+    .card-attendance .skill-features li .check { background: var(--pink-glow); color: var(--pink); }
+    .card-mail .skill-features li .check { background: var(--green-glow); color: var(--green); }
+    .card-location .skill-features li .check { background: var(--orange-glow); color: var(--orange); }
 
     .skill-trigger {
       padding: 12px 16px;
@@ -629,6 +646,9 @@
     .skill-card:nth-child(4) { animation-delay: 0.4s; }
     .skill-card:nth-child(5) { animation-delay: 0.5s; }
     .skill-card:nth-child(6) { animation-delay: 0.6s; }
+    .skill-card:nth-child(7) { animation-delay: 0.7s; }
+    .skill-card:nth-child(8) { animation-delay: 0.8s; }
+    .skill-card:nth-child(9) { animation-delay: 0.9s; }
 
     .step {
       animation: fadeInUp 0.8s ease-out both;
@@ -662,8 +682,9 @@
     </h1>
 
     <p class="hero-sub">
-      6 款飞书 CLI Skills，涵盖日报生成、项目管理、视频评论分析、<br>
-      Sprint回顾、消息智能监听、内容聚合等多个垂直场景。<br>
+      9 款飞书 CLI Skills，涵盖日报生成、项目管理、视频评论分析、<br>
+      Sprint回顾、消息智能监听、内容聚合、考勤分析、邮件摘要、<br>
+      外勤追踪等多个垂直场景。<br>
       接入 Trae / Cursor / OpenClaw，一句话触发，零操作成本。
     </p>
 
@@ -773,6 +794,48 @@
           <li><span class="check">✓</span>知识图谱关联 + 相关推荐</li>
         </ul>
         <div class="skill-trigger">试试说：<strong>"帮我收藏这篇文章"</strong></div>
+      </div>
+
+      <div class="skill-card card-attendance">
+        <div class="skill-number">07</div>
+        <div class="skill-icon">📅</div>
+        <h3 class="skill-name">Lark Attendance</h3>
+        <p class="skill-tagline">智能考勤分析器 — 异常检测 + 审批流自动化</p>
+        <ul class="skill-features">
+          <li><span class="check">✓</span>出勤率/准时率统计 + ECharts可视化</li>
+          <li><span class="check">✓</span>迟到/早退/缺勤自动识别</li>
+          <li><span class="check">✓</span>补卡/请假自动触发审批</li>
+          <li><span class="check">✓</span>加班分析 + 与日历打通</li>
+        </ul>
+        <div class="skill-trigger">试试说：<strong>"查看本月出勤情况"</strong></div>
+      </div>
+
+      <div class="skill-card card-mail">
+        <div class="skill-number">08</div>
+        <div class="skill-icon">📧</div>
+        <h3 class="skill-name">Lark Mail Digest</h3>
+        <p class="skill-tagline">邮件智能摘要中心 — 紧急度分类 + 待办提取</p>
+        <ul class="skill-features">
+          <li><span class="check">✓</span>按紧急度/主题/项目智能分类</li>
+          <li><span class="check">✓</span>自动提取邮件中的待办事项</li>
+          <li><span class="check">✓</span>批量标记已读/归档/删除</li>
+          <li><span class="check">✓</span>项目邮件汇总 + 导出报告</li>
+        </ul>
+        <div class="skill-trigger">试试说：<strong>"帮我整理一下邮件"</strong></div>
+      </div>
+
+      <div class="skill-card card-location">
+        <div class="skill-number">09</div>
+        <div class="skill-icon">📍</div>
+        <h3 class="skill-name">Lark Location Track</h3>
+        <p class="skill-tagline">外勤追踪与拜访管理 — 路线优化 + 差旅统计</p>
+        <ul class="skill-features">
+          <li><span class="check">✓</span>外勤打卡 + GPS位置记录</li>
+          <li><span class="check">✓</span>客户拜访计划 + 跟进提醒</li>
+          <li><span class="check">✓</span>差旅费用自动汇总</li>
+          <li><span class="check">✓</span>多目的地智能路线优化</li>
+        </ul>
+        <div class="skill-trigger">试试说：<strong>"记录今天的拜访行程"</strong></div>
       </div>
     </div>
   </section>
