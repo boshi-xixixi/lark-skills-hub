@@ -1,11 +1,101 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import random
+import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 
 DATA_DIR = Path.home() / ".lark-location-track"
 DATA_DIR.mkdir(exist_ok=True)
+
+def load_cache(name):
+    f = DATA_DIR / f"{name}.json"
+    if f.exists():
+        return json.loads(f.read_text())
+    return []
+
+def save_cache(name, data):
+    (DATA_DIR / f"{name}.json").write_text(json.dumps(data, ensure_ascii=False, indent=2))
+
+def run_lark_cli(cmd_args, timeout=30):
+    try:
+        result = subprocess.run(
+            ["lark-cli"] + cmd_args,
+            capture_output=True, text=True, timeout=timeout
+        )
+        if result.returncode != 0:
+            return None
+        return json.loads(result.stdout)
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
+        return None
+
+def fetch_calendar_events(start_date, end_date):
+    result = run_lark_cli([
+        "calendar", "+agenda",
+        "--format", "json"
+    ])
+
+    if not result or not result.get("ok"):
+        return None
+
+    events = result.get("data", [])
+    if not events:
+        return []
+
+    visits = []
+    for evt in events:
+        summary = evt.get("summary", "")
+        location = evt.get("location", {})
+        location_name = location.get("name", "") if isinstance(location, dict) else str(location)
+        start_time = evt.get("start_time", evt.get("start", {}))
+        if isinstance(start_time, dict):
+            start_time = start_time.get("timestamp", start_time.get("date", ""))
+
+        visits.append({
+            "id": evt.get("event_id", evt.get("id", "")),
+            "date": str(start_time)[:10] if start_time else "",
+            "time": str(start_time)[11:16] if len(str(start_time)) > 16 else "",
+            "client": summary,
+            "purpose": "日程同步",
+            "location": location_name or "未指定",
+            "duration": 1,
+            "notes": evt.get("description", ""),
+            "next_action": "",
+            "has_expense": False
+        })
+    return visits
+
+def fetch_tasks():
+    result = run_lark_cli([
+        "task", "+get-my-tasks",
+        "--format", "json"
+    ])
+
+    if not result or not result.get("ok"):
+        return None
+
+    items = result.get("data", {}).get("items", [])
+    if not items:
+        return []
+
+    visits = []
+    for item in items:
+        summary = item.get("summary", "")
+        due = item.get("due_at", "")
+        visits.append({
+            "id": item.get("guid", ""),
+            "date": due[:10] if due else "",
+            "time": due[11:16] if len(due) > 16 else "",
+            "client": summary,
+            "purpose": "任务同步",
+            "location": "",
+            "duration": 1,
+            "notes": "",
+            "next_action": "",
+            "has_expense": False
+        })
+    return visits
 
 def generate_mock_visits(start_date, end_date):
     clients = ["A公司", "B公司", "C公司", "D公司", "E公司"]
@@ -39,6 +129,16 @@ def generate_mock_visits(start_date, end_date):
 
     return visits
 
+def get_visits(start_date, end_date):
+    api_visits = fetch_calendar_events(start_date, end_date)
+    if api_visits is not None and len(api_visits) > 0:
+        save_cache("visits", api_visits)
+        return api_visits, True
+
+    mock_visits = generate_mock_visits(start_date, end_date)
+    save_cache("visits", mock_visits)
+    return mock_visits, False
+
 def cmd_checkin(args):
     record = {
         "type": "checkin",
@@ -46,7 +146,7 @@ def cmd_checkin(args):
         "location": args.location,
         "client": args.client,
         "notes": args.notes or "",
-        "gps": f"39.9{idx % 10}, 116.4{idx % 10}"
+        "gps": f"39.9{random.randint(0,9)}, 116.4{random.randint(0,9)}"
     }
 
     checkins = load_cache("checkins")
@@ -92,7 +192,7 @@ def cmd_today(args):
     visits = load_cache("visits")
 
     today_checkins = [c for c in checkins if c.get("timestamp", "").startswith(today)]
-    today_visits = [v for v in visits if v.get("timestamp", "").startswith(today)]
+    today_visits = [v for v in visits if v.get("timestamp", "").startswith(today) or v.get("date", "") == today]
 
     print(f"\n📅 今日外勤 ({today})")
     print("-" * 50)
@@ -116,18 +216,19 @@ def cmd_stats(args):
     start = args.start or (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
     end = args.end or datetime.now().strftime("%Y-%m-%d")
 
-    visits = generate_mock_visits(start, end)
+    visits, is_real = get_visits(start, end)
 
-    total_days = len(set(v["date"] for v in visits))
-    total_clients = len(set(v["client"] for v in visits))
+    total_days = len(set(v.get("date", "") for v in visits if v.get("date")))
+    total_clients = len(set(v.get("client", "") for v in visits if v.get("client")))
     total_visits = len(visits)
 
-    expenses = sum([300, 500, 200, 400] * (len(visits) // 4 + 1))[:total_visits]
-    total_expense = sum(expenses)
+    expense_list = [300, 500, 200, 400] * (len(visits) // 4 + 1)
+    total_expense = sum(expense_list[:total_visits])
 
     save_cache("visits", visits)
 
-    print(f"\n📊 外勤统计 ({start} ~ {end})")
+    source = "🟢 飞书API" if is_real else "🟡 模拟数据"
+    print(f"\n📊 外勤统计 ({start} ~ {end}) [{source}]")
     print("-" * 50)
     print(f"  出差天数: {total_days}天")
     print(f"  拜访客户: {total_clients}家")
@@ -144,7 +245,7 @@ def cmd_report(args):
     visits = load_cache("visits")
     if not visits:
         start = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
-        visits = generate_mock_visits(start, datetime.now().strftime("%Y-%m-%d"))
+        visits, _ = get_visits(start, datetime.now().strftime("%Y-%m-%d"))
 
     client_visits = [v for v in visits if v.get("client") == args.client]
 
@@ -155,12 +256,12 @@ def cmd_report(args):
     print(f"\n# 📍 拜访报告 — {args.client}")
     print(f"\n## 基本信息")
     print(f"- 拜访次数: {len(client_visits)}次")
-    print(f"- 首次拜访: {client_visits[0]['date']}")
-    print(f"- 最近拜访: {client_visits[-1]['date']}")
+    print(f"- 首次拜访: {client_visits[0].get('date', '')}")
+    print(f"- 最近拜访: {client_visits[-1].get('date', '')}")
 
     print(f"\n## 拜访明细")
     for v in client_visits:
-        print(f"\n### {v['date']} {v.get('time', '')}")
+        print(f"\n### {v.get('date', '')} {v.get('time', '')}")
         print(f"- 目的: {v.get('purpose', '')}")
         print(f"- 地点: {v.get('location', '')}")
         print(f"- 内容: {v.get('notes', '')}")
@@ -186,7 +287,6 @@ def cmd_route(args):
         print(f"  {i}. {name} {'(' + addr + ')' if addr else ''}")
 
     print(f"\n📌 推荐路线:")
-    optimized = sorted(enumerate(locations), key=lambda x: x[0])
     route_str = " → ".join([loc.split("@")[0] for loc in locations])
     print(f"  {route_str}")
 
@@ -200,7 +300,7 @@ def cmd_expense(args):
     visits = load_cache("visits")
     if not visits:
         start = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
-        visits = generate_mock_visits(start, datetime.now().strftime("%Y-%m-%d"))
+        visits, _ = get_visits(start, datetime.now().strftime("%Y-%m-%d"))
 
     expenses = {
         "交通": 0,
@@ -233,33 +333,29 @@ def cmd_calendar(args):
     visits = load_cache("visits")
     if not visits:
         start = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
-        visits = generate_mock_visits(start, datetime.now().strftime("%Y-%m-%d"))
+        visits, _ = get_visits(start, datetime.now().strftime("%Y-%m-%d"))
 
     print(f"\n📅 拜访日历")
     print("-" * 50)
 
-    dates = sorted(set(v["date"] for v in visits))
+    dates = sorted(set(v.get("date", "") for v in visits if v.get("date")))
     for d in dates[:7]:
-        day_visits = [v for v in visits if v["date"] == d]
-        print(f"\n{d} ({'一二三四五六日'[datetime.strptime(d, '%Y-%m-%d').weekday()]}):")
+        day_visits = [v for v in visits if v.get("date") == d]
+        try:
+            weekday = '一二三四五六日'[datetime.strptime(d, '%Y-%m-%d').weekday()]
+        except ValueError:
+            weekday = "?"
+        print(f"\n{d} ({weekday}):")
         for v in day_visits:
             print(f"  {v.get('time', '全天')} {v.get('client', '')} - {v.get('purpose', '')}")
 
     print(f"\n✅ 可同步到飞书日历")
 
-def load_cache(name):
-    f = DATA_DIR / f"{name}.json"
-    if f.exists():
-        return json.loads(f.read_text())
-    return []
-
-def save_cache(name, data):
-    (DATA_DIR / f"{name}.json").write_text(json.dumps(data, ensure_ascii=False, indent=2))
-
 def generate_html_stats(visits, total_days, total_clients, total_expense):
     client_counts = {}
     for v in visits:
-        client_counts[v["client"]] = client_counts.get(v["client"], 0) + 1
+        client = v.get("client", "未知")
+        client_counts[client] = client_counts.get(client, 0) + 1
 
     chart_data = [{"name": k, "value": v} for k, v in client_counts.items()]
 
@@ -314,10 +410,10 @@ def generate_html_stats(visits, total_days, total_clients, total_expense):
 
     for v in visits[:10]:
         html += f"""<tr>
-      <td>{v['date']}</td>
-      <td>{v['client']}</td>
-      <td>{v['purpose']}</td>
-      <td>{v['location']}</td>
+      <td>{v.get('date', '')}</td>
+      <td>{v.get('client', '')}</td>
+      <td>{v.get('purpose', '')}</td>
+      <td>{v.get('location', '')}</td>
     </tr>"""
 
     html += """</table>

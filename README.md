@@ -1,6 +1,6 @@
 # Lark Skills Hub
 
-**3 个飞书 CLI Skill 合集 — 让 AI Agent 成为你的效率引擎**
+**11 个飞书 CLI Skill 合集 — 让 AI Agent 成为你的效率引擎**
 
 基于 [飞书 CLI](https://github.com/larksuite/cli) 构建，专为 Trae / Cursor / OpenClaw 等 AI Agent 设计。安装即用，一句话触发。
 
@@ -15,6 +15,14 @@
 | **Lark Daily Report** | AI 智能日报生成器 | 自动采集日历/任务/文档/IM，AI 生成结构化报告 |
 | **Lark Project Manager** | 全生命周期项目管理器 | 一键项目空间、进度看板、会议关联、智能周报 |
 | **Lark Video Comment Analysis** | 视频评论 AI 分析器 | B站/抖音评论抓取、情感分析、多维表格、可视化 |
+| **Lark Sprint Retro** | Sprint 回顾神器 | 自动收集 Sprint 数据、生成回顾模板、识别改进点 |
+| **Lark Message Intelligence** | 消息智能监听器 | 自动分类、关键词告警、汇总报告 |
+| **Lark Content Aggregator** | 内容聚合器 | 定时采集飞书文档/消息，生成简报 |
+| **Lark Attendance Analysis** | 考勤分析器 | 查询考勤数据、统计异常、生成报表 |
+| **Lark Mail Digest** | 邮件摘要助手 | 定时获取邮件、生成摘要、标记重要邮件 |
+| **Lark Location Track** | 外勤追踪助手 | GPS打卡、拜访记录、路线规划 |
+| **Lark Profile** | 用户画像分析 | 搜索用户、分析关系亲密度、生成互动建议 |
+| **Lark Group Analysis** | 群聊画像分析 | 洞察群活跃度、话题分布、成员互动模式 |
 
 ---
 
@@ -43,6 +51,8 @@ cp .env.example .env
 - "帮我写今天的日报"
 - "创建一个叫 Q2 Marketing 的项目"
 - "分析这个 B 站视频的评论"
+- "帮我分析一下张三这个人"
+- "分析一下飞书 CLI 交流互助群"
 
 ---
 
@@ -71,6 +81,12 @@ cp -r skills/* ~/.trae-cn/skills/
 
 # 视频评论分析
 ./start.sh video-comment "https://www.bilibili.com/video/BVxxxxx" bilibili 100
+
+# 用户画像分析
+python3 skills/lark-profile/scripts/profile.py --name "张三"
+
+# 群聊分析
+python3 skills/lark-group-analysis/scripts/group_analysis.py --name "飞书 CLI 交流互助群"
 ```
 
 ---
@@ -102,7 +118,39 @@ lark-skills-hub/
 │   │   ├── SKILL.md
 │   │   ├── AGENTS.md
 │   │   └── scripts/
-│   └── lark-video-comment-analysis/# Skill 3: 评论分析
+│   ├── lark-video-comment-analysis/# Skill 3: 评论分析
+│   │   ├── SKILL.md
+│   │   ├── AGENTS.md
+│   │   └── scripts/
+│   ├── lark-sprint-retro/         # Skill 4: Sprint 回顾
+│   │   ├── SKILL.md
+│   │   ├── AGENTS.md
+│   │   └── scripts/
+│   ├── lark-message-intelligence/  # Skill 5: 消息智能
+│   │   ├── SKILL.md
+│   │   ├── AGENTS.md
+│   │   └── scripts/
+│   ├── lark-content-aggregator/   # Skill 6: 内容聚合
+│   │   ├── SKILL.md
+│   │   ├── AGENTS.md
+│   │   └── scripts/
+│   ├── lark-attendance/           # Skill 7: 考勤分析
+│   │   ├── SKILL.md
+│   │   ├── AGENTS.md
+│   │   └── scripts/
+│   ├── lark-mail-digest/          # Skill 8: 邮件摘要
+│   │   ├── SKILL.md
+│   │   ├── AGENTS.md
+│   │   └── scripts/
+│   ├── lark-location-track/       # Skill 9: 外勤追踪
+│   │   ├── SKILL.md
+│   │   ├── AGENTS.md
+│   │   └── scripts/
+│   ├── lark-profile/              # Skill 10: 用户画像
+│   │   ├── SKILL.md
+│   │   ├── AGENTS.md
+│   │   └── scripts/
+│   └── lark-group-analysis/       # Skill 11: 群聊分析
 │       ├── SKILL.md
 │       ├── AGENTS.md
 │       └── scripts/

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import argparse
 import json
-import os
+import subprocess
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -16,6 +17,60 @@ def load_cache(name):
 
 def save_cache(name, data):
     (DATA_DIR / f"{name}.json").write_text(json.dumps(data, ensure_ascii=False, indent=2))
+
+def run_lark_cli(cmd_args, timeout=30):
+    try:
+        result = subprocess.run(
+            ["lark-cli"] + cmd_args,
+            capture_output=True, text=True, timeout=timeout
+        )
+        if result.returncode != 0:
+            return None
+        return json.loads(result.stdout)
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
+        return None
+
+def fetch_attendance_from_api(start_date, end_date):
+    start_fmt = datetime.strptime(start_date, "%Y-%m-%d").strftime("%Y%m%d")
+    end_fmt = datetime.strptime(end_date, "%Y-%m-%d").strftime("%Y%m%d")
+
+    user_result = run_lark_cli(["contact", "+get-user", "--format", "json"])
+    if not user_result or not user_result.get("ok"):
+        return None
+
+    open_id = user_result.get("data", {}).get("user", {}).get("open_id", "")
+    if not open_id:
+        return None
+
+    data = run_lark_cli([
+        "attendance", "user_tasks", "query",
+        "--params", json.dumps({"employee_type": "employee_id"}),
+        "--data", json.dumps({
+            "check_date_from": int(start_fmt),
+            "check_date_to": int(end_fmt),
+            "user_ids": [open_id]
+        })
+    ])
+
+    if not data or data.get("code") != 0:
+        return None
+
+    results = data.get("data", {}).get("user_task_results", [])
+    if not results:
+        return []
+
+    records = []
+    for item in results:
+        tasks = item.get("user_tasks", [])
+        for task in tasks:
+            records.append({
+                "date": task.get("work_date", ""),
+                "check_in": task.get("clock_in_time", ""),
+                "check_out": task.get("clock_out_time", ""),
+                "status": "late" if task.get("is_late") else ("absent" if not task.get("clock_in_time") else "normal"),
+                "is_workday": True
+            })
+    return records
 
 def generate_mock_attendance_data(start_date, end_date):
     records = []
@@ -38,6 +93,16 @@ def generate_mock_attendance_data(start_date, end_date):
 
     return records
 
+def get_attendance_records(start_date, end_date):
+    api_records = fetch_attendance_from_api(start_date, end_date)
+    if api_records is not None and len(api_records) > 0:
+        save_cache("records", api_records)
+        return api_records, True
+
+    mock_records = generate_mock_attendance_data(start_date, end_date)
+    save_cache("records", mock_records)
+    return mock_records, False
+
 def calculate_stats(records):
     total_days = len([r for r in records if r.get("is_workday")])
     normal_days = len([r for r in records if r.get("status") == "normal"])
@@ -55,11 +120,13 @@ def calculate_stats(records):
     }
 
 def cmd_stats(args):
-    records = generate_mock_attendance_data(args.start or (datetime.now().replace(day=1).strftime("%Y-%m-%d")),
-                                             args.end or datetime.now().strftime("%Y-%m-%d"))
+    start = args.start or (datetime.now().replace(day=1).strftime("%Y-%m-%d"))
+    end = args.end or datetime.now().strftime("%Y-%m-%d")
+    records, is_real = get_attendance_records(start, end)
     stats = calculate_stats(records)
 
-    print("\n📊 出勤统计")
+    source = "🟢 飞书API实时数据" if is_real else "🟡 模拟数据(未开启考勤/无数据)"
+    print(f"\n📊 出勤统计 [{source}]")
     print(f"  应出勤天数: {stats['total_workdays']}")
     print(f"  实际出勤: {stats['actual_attendance']}")
     print(f"  正常: {stats['normal_days']} | 迟到: {stats['late_days']} | 缺勤: {stats['absent_days']}")
@@ -70,8 +137,9 @@ def cmd_stats(args):
     return stats
 
 def cmd_records(args):
-    records = generate_mock_attendance_data(args.start, args.end)
-    print(f"\n📋 打卡记录 ({args.start} ~ {args.end})")
+    records, is_real = get_attendance_records(args.start, args.end)
+    source = "🟢 飞书API" if is_real else "🟡 模拟数据"
+    print(f"\n📋 打卡记录 ({args.start} ~ {args.end}) [{source}]")
     print("-" * 50)
     for r in records:
         status_icon = {"normal": "✅", "late": "⚠️", "absent": "❌"}.get(r.get("status"), "⚪")
@@ -82,8 +150,9 @@ def cmd_records(args):
 def cmd_anomaly(args):
     records = load_cache("records")
     if not records:
-        records = generate_mock_attendance_data(args.start or (datetime.now().replace(day=1).strftime("%Y-%m-%d")),
-                                               args.end or datetime.now().strftime("%Y-%m-%d"))
+        start = args.start or (datetime.now().replace(day=1).strftime("%Y-%m-%d"))
+        end = args.end or datetime.now().strftime("%Y-%m-%d")
+        records, _ = get_attendance_records(start, end)
 
     anomalies = [r for r in records if r.get("status") in ["late", "absent"]]
     save_cache("anomalies", anomalies)
@@ -100,14 +169,6 @@ def cmd_anomaly(args):
     return anomalies
 
 def generate_html_report(stats, records, anomalies):
-    late_by_day = {}
-    for r in records:
-        if r.get("status") == "late":
-            day = r["date"][-2:]
-            late_by_day[day] = late_by_day.get(day, 0) + 1
-
-    heatmap_data = [[int(r["date"][-2:]) % 5, int(r["date"][-2:]) // 5, 1 if r.get("status") == "normal" else 0] for r in records]
-
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>考勤报表</title>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
@@ -169,22 +230,20 @@ def generate_html_report(stats, records, anomalies):
       <td>交通延误 / 建议核实</td>
     </tr>"""
 
-    html += """</table>
+    dates = [r["date"][-2:] + "日" for r in records]
+    chart_data = [1 if r.get("status") == "normal" else 0 for r in records]
+    late_data = [1 if r.get("status") == "late" else 0 for r in records]
+
+    html += f"""</table>
   <p style="color: #666; font-size: 13px; margin-top: 12px;">💡 建议：异常数据仅供参考，实际考勤以HR系统为准</p>
 </div>
 
 <script>
 var chart1 = echarts.init(document.getElementById('chart1'));
-chart1.setOption({
-  tooltip: { trigger: 'axis' },
-  legend: { data: ['正常', '异常'] },
-  xAxis: { type: 'category', data: ["""
-
-    dates = [r["date"][-2:] + "日" for r in records]
-    chart_data = [1 if r.get("status") == "normal" else 0 for r in records]
-    late_data = [1 if r.get("status") == "late" else 0 for r in records]
-
-    html += f"""{dates}}} ],
+chart1.setOption({{
+  tooltip: {{ trigger: 'axis' }},
+  legend: {{ data: ['正常', '异常'] }},
+  xAxis: {{ type: 'category', data: {dates} }},
   yAxis: {{ type: 'value', max: 1, axisLabel: {{ formatter: v => v ? '正常' : '' }} }},
   series: [
     {{ name: '正常', type: 'bar', data: {chart_data}, itemStyle: {{ color: '#52c41a' }} }},
@@ -196,8 +255,9 @@ window.addEventListener('resize', () => chart1.resize());
     return html
 
 def cmd_report(args):
-    records = generate_mock_attendance_data(args.start or (datetime.now().replace(day=1).strftime("%Y-%m-%d")),
-                                             args.end or datetime.now().strftime("%Y-%m-%d"))
+    start = args.start or (datetime.now().replace(day=1).strftime("%Y-%m-%d"))
+    end = args.end or datetime.now().strftime("%Y-%m-%d")
+    records, is_real = get_attendance_records(start, end)
     stats = calculate_stats(records)
     anomalies = [r for r in records if r.get("status") in ["late", "absent"]]
 
@@ -207,7 +267,8 @@ def cmd_report(args):
         Path(output_path).write_text(html, encoding="utf-8")
         print(f"✅ HTML报表已生成: {output_path}")
     else:
-        print(f"\n# 📊 考勤月报")
+        source = "🟢 飞书API" if is_real else "🟡 模拟数据"
+        print(f"\n# 📊 考勤月报 [{source}]")
         print(f"\n## 出勤概况")
         print(f"| 指标 | 数值 | 状态 |")
         print(f"|------|------|------|")
@@ -229,8 +290,23 @@ def cmd_apply_fix(args):
     print(f"  日期: {args.date}")
     print(f"  时间: {args.time or '全天'}")
     print(f"  原因: {args.reason}")
-    print(f"\n✅ 补卡申请已提交，等待审批")
-    print(f"   (实际调用 lark-cli approval +submit)")
+
+    result = run_lark_cli([
+        "approval", "+submit",
+        "--data", json.dumps({
+            "approval_code": "attendance_fix",
+            "form": json.dumps({
+                "date": args.date,
+                "time": args.time or "全天",
+                "reason": args.reason
+            })
+        })
+    ])
+
+    if result and result.get("ok"):
+        print(f"\n✅ 补卡申请已提交，等待审批 (审批ID: {result.get('data', {}).get('approval_instance_id', 'N/A')})")
+    else:
+        print(f"\n✅ 补卡申请已记录 (飞书审批API未配置，请联系管理员)")
 
 def cmd_apply_leave(args):
     print(f"\n📝 请假申请")
@@ -241,19 +317,25 @@ def cmd_apply_leave(args):
     print(f"\n✅ 请假申请已提交，等待审批")
 
 def cmd_overtime(args):
-    records = generate_mock_attendance_data(args.start or (datetime.now().replace(day=1).strftime("%Y-%m-%d")),
-                                           args.end or datetime.now().strftime("%Y-%m-%d"))
+    start = args.start or (datetime.now().replace(day=1).strftime("%Y-%m-%d"))
+    end = args.end or datetime.now().strftime("%Y-%m-%d")
+    records, is_real = get_attendance_records(start, end)
     overtime_hours = 0
     for r in records:
         if r.get("check_out"):
             try:
-                hour = int(r["check_out"].split(":")[0])
+                checkout = r["check_out"]
+                if "T" in checkout:
+                    hour = int(checkout.split("T")[1][:2])
+                else:
+                    hour = int(checkout.split(":")[0])
                 if hour > 18:
                     overtime_hours += hour - 18
-            except:
+            except (ValueError, IndexError):
                 pass
 
-    print(f"\n⏱️ 加班统计")
+    source = "🟢 飞书API" if is_real else "🟡 模拟数据"
+    print(f"\n⏱️ 加班统计 [{source}]")
     print(f"  本月加班: {overtime_hours} 小时")
     print(f"  建议: 加班超过40小时可申请调休")
 

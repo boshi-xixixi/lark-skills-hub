@@ -2,11 +2,69 @@
 import argparse
 import json
 import re
+import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 
 DATA_DIR = Path.home() / ".lark-mail-digest"
 DATA_DIR.mkdir(exist_ok=True)
+
+def load_cache(name):
+    f = DATA_DIR / f"{name}.json"
+    if f.exists():
+        return json.loads(f.read_text())
+    return []
+
+def save_cache(name, data):
+    (DATA_DIR / f"{name}.json").write_text(json.dumps(data, ensure_ascii=False, indent=2))
+
+def run_lark_cli(cmd_args, timeout=30):
+    try:
+        result = subprocess.run(
+            ["lark-cli"] + cmd_args,
+            capture_output=True, text=True, timeout=timeout
+        )
+        if result.returncode != 0:
+            return None
+        return json.loads(result.stdout)
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
+        return None
+
+def fetch_emails_from_api(start_date, end_date):
+    result = run_lark_cli([
+        "mail", "+triage",
+        "--max", "50",
+        "--format", "json"
+    ])
+
+    if not result or not result.get("ok"):
+        return None
+
+    messages = result.get("data", {}).get("messages", [])
+    if not messages:
+        return []
+
+    emails = []
+    for msg in messages:
+        subject = msg.get("subject", "(无主题)")
+        sender = msg.get("from", "")
+        if isinstance(sender, dict):
+            sender = sender.get("email", sender.get("name", str(sender)))
+        date_str = msg.get("date", "")
+        msg_id = msg.get("message_id", msg.get("id", ""))
+
+        emails.append({
+            "id": msg_id,
+            "sender": sender,
+            "subject": subject,
+            "date": date_str[:10] if date_str else "",
+            "time": date_str[11:16] if len(date_str) > 16 else "",
+            "priority": classify_email({"subject": subject, "sender": sender}),
+            "read": msg.get("is_read", True),
+            "has_todo": False
+        })
+
+    return emails
 
 def generate_mock_emails(start_date, end_date):
     senders = ["zhangsan@company.com", "lisi@partner.com", "wangwu@client.com",
@@ -47,13 +105,23 @@ def generate_mock_emails(start_date, end_date):
 
     return emails
 
-def classify_email(email):
-    subject = email["subject"].lower()
-    sender = email["sender"].lower()
+def get_emails(start_date, end_date):
+    api_emails = fetch_emails_from_api(start_date, end_date)
+    if api_emails is not None and len(api_emails) > 0:
+        save_cache("emails", api_emails)
+        return api_emails, True
 
-    if "紧急" in subject or "截止" in subject or sender.startswith("boss"):
+    mock_emails = generate_mock_emails(start_date, end_date)
+    save_cache("emails", mock_emails)
+    return mock_emails, False
+
+def classify_email(email):
+    subject = email.get("subject", "").lower()
+    sender = email.get("sender", "").lower()
+
+    if "紧急" in subject or "截止" in subject or "urgent" in subject or sender.startswith("boss"):
         return "urgent"
-    elif "评审" in subject or "审批" in subject or "确认" in subject or "客户" in sender:
+    elif "评审" in subject or "审批" in subject or "确认" in subject or "客户" in sender or "important" in subject:
         return "important"
     return "normal"
 
@@ -69,7 +137,7 @@ def extract_todos(email):
     ]
 
     todos = []
-    content = f"{email['subject']}"
+    content = f"{email.get('subject', '')}"
 
     for p in patterns:
         matches = re.findall(p, content)
@@ -84,24 +152,25 @@ def extract_todos(email):
 def cmd_list(args):
     start = args.start or (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
     end = args.end or datetime.now().strftime("%Y-%m-%d")
-    emails = generate_mock_emails(start, end)
+    emails, is_real = get_emails(start, end)
 
     if args.sender:
         emails = [e for e in emails if args.sender in e["sender"]]
 
     save_cache("emails", emails)
 
-    print(f"\n📧 邮件列表 ({start} ~ {end})")
+    source = "🟢 飞书API" if is_real else "🟡 模拟数据"
+    print(f"\n📧 邮件列表 ({start} ~ {end}) [{source}]")
     print("-" * 70)
     for e in emails:
-        icon = "✅" if e["read"] else "🔵"
-        pri = {"urgent": "🔴", "important": "🟠", "normal": "🟡", "reference": "🟢"}.get(e["priority"], "")
-        print(f"  {icon}{pri} [{e['id']}] {e['date']} {e['sender']:<20} {e['subject']}")
+        icon = "✅" if e.get("read") else "🔵"
+        pri = {"urgent": "🔴", "important": "🟠", "normal": "🟡", "reference": "🟢"}.get(e.get("priority"), "")
+        print(f"  {icon}{pri} [{e['id']}] {e.get('date', '')} {e.get('sender', ''):<20} {e.get('subject', '')}")
 
 def cmd_classify(args):
     start = args.start or (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
     end = args.end or datetime.now().strftime("%Y-%m-%d")
-    emails = generate_mock_emails(start, end)
+    emails, is_real = get_emails(start, end)
 
     for e in emails:
         e["priority"] = classify_email(e)
@@ -112,7 +181,8 @@ def cmd_classify(args):
 
     save_cache("emails", emails)
 
-    print(f"\n📊 邮件分类 ({start} ~ {end})")
+    source = "🟢 飞书API" if is_real else "🟡 模拟数据"
+    print(f"\n📊 邮件分类 ({start} ~ {end}) [{source}]")
     print("-" * 70)
 
     for level in ["urgent", "important", "normal", "reference"]:
@@ -120,7 +190,7 @@ def cmd_classify(args):
             icon = {"urgent": "🔴", "important": "🟠", "normal": "🟡", "reference": "🟢"}[level]
             print(f"\n{icon} {level.upper()} ({len(grouped[level])}封)")
             for e in grouped[level][:5]:
-                print(f"   - {e['subject'][:40]}... | {e['sender']}")
+                print(f"   - {e.get('subject', '')[:40]}... | {e.get('sender', '')}")
             if len(grouped[level]) > 5:
                 print(f"   ... 还有 {len(grouped[level]) - 5} 封")
 
@@ -128,12 +198,12 @@ def cmd_group(args):
     emails = load_cache("emails")
     if not emails:
         start = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
-        emails = generate_mock_emails(start, datetime.now().strftime("%Y-%m-%d"))
+        emails, _ = get_emails(start, datetime.now().strftime("%Y-%m-%d"))
 
     if args.project:
-        grouped = [e for e in emails if args.project in e["subject"] or args.project in e["sender"]]
+        grouped = [e for e in emails if args.project in e.get("subject", "") or args.project in e.get("sender", "")]
     elif args.keyword:
-        grouped = [e for e in emails if args.keyword.lower() in e["subject"].lower()]
+        grouped = [e for e in emails if args.keyword.lower() in e.get("subject", "").lower()]
     else:
         grouped = emails
 
@@ -144,26 +214,26 @@ def cmd_group(args):
     print(f"找到 {len(grouped)} 封相关邮件\n")
 
     for e in grouped:
-        print(f"  [{e['id']}] {e['date']} {e['sender']}")
-        print(f"     主题: {e['subject']}")
+        print(f"  [{e.get('id', '')}] {e.get('date', '')} {e.get('sender', '')}")
+        print(f"     主题: {e.get('subject', '')}")
         print()
 
 def cmd_extract_todos(args):
     emails = load_cache("emails")
     if not emails:
         start = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
-        emails = generate_mock_emails(start, datetime.now().strftime("%Y-%m-%d"))
+        emails, _ = get_emails(start, datetime.now().strftime("%Y-%m-%d"))
 
     all_todos = []
     for e in emails:
         todos = extract_todos(e)
         for t in todos:
             all_todos.append({
-                "mail_id": e["id"],
+                "mail_id": e.get("id", ""),
                 "task": t,
-                "subject": e["subject"],
-                "sender": e["sender"],
-                "date": e["date"]
+                "subject": e.get("subject", ""),
+                "sender": e.get("sender", ""),
+                "date": e.get("date", "")
             })
 
     save_cache("todos", all_todos)
@@ -184,7 +254,7 @@ def cmd_extract_todos(args):
 def cmd_digest(args):
     start = args.start or (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
     end = args.end or datetime.now().strftime("%Y-%m-%d")
-    emails = generate_mock_emails(start, end)
+    emails, is_real = get_emails(start, end)
 
     for e in emails:
         e["priority"] = classify_email(e)
@@ -200,16 +270,18 @@ def cmd_digest(args):
     save_cache("emails", emails)
     save_cache("todos", [{"task": t} for t in todos])
 
+    source = "🟢 飞书API" if is_real else "🟡 模拟数据"
+
     if args.format == "html":
-        html = generate_html_digest(emails, grouped, todos)
+        html = generate_html_digest(emails, grouped, todos, source)
         output = Path(args.output) if args.output else DATA_DIR / f"mail_digest_{datetime.now().strftime('%Y%m%d')}.html"
         Path(output).write_text(html, encoding="utf-8")
         print(f"✅ HTML摘要已生成: {output}")
     else:
-        print(f"\n# 📧 邮件摘要 {start} ~ {end}")
+        print(f"\n# 📧 邮件摘要 {start} ~ {end} [{source}]")
         print(f"\n## 统计")
         print(f"- 邮件总数: {len(emails)}封")
-        print(f"- 发件人: {len(set(e['sender'] for e in emails))}人")
+        print(f"- 发件人: {len(set(e.get('sender', '') for e in emails))}人")
         print(f"- 含待办: {len(todos)}项")
 
         print(f"\n## 紧急度分布")
@@ -225,7 +297,7 @@ def cmd_digest(args):
             if len(todos) > 10:
                 print(f"- ... 还有 {len(todos) - 10} 项")
 
-def generate_html_digest(emails, grouped, todos):
+def generate_html_digest(emails, grouped, todos, source=""):
     priority_stats = [{"name": k, "value": len(v)} for k, v in grouped.items()]
 
     html = f"""<!DOCTYPE html>
@@ -252,9 +324,10 @@ def generate_html_digest(emails, grouped, todos):
   .badge-urgent {{ background: #ffebee; color: #c62828; }}
   .badge-important {{ background: #fff3e0; color: #e65100; }}
   .badge-normal {{ background: #e3f2fd; color: #1565c0; }}
+  .source-tag {{ display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; background: #e8f5e9; color: #2e7d32; }}
 </style></head><body>
 <div class="card">
-  <h1>📧 邮件摘要 {datetime.now().strftime("%Y年%m月%d日")}</h1>
+  <h1>📧 邮件摘要 {datetime.now().strftime("%Y年%m月%d日")} <span class="source-tag">{source}</span></h1>
   <div class="stat-grid">
     <div class="stat-card">
       <div class="stat-value">{len(emails)}</div>
@@ -284,20 +357,20 @@ def generate_html_digest(emails, grouped, todos):
   <h3>🔴 紧急邮件 ({len(grouped['urgent'])}封)</h3>"""
     for e in grouped["urgent"]:
         html += f"""<div class="email-item">
-      <div class="email-subject">{e['subject']}</div>
-      <div class="email-meta">{e['sender']} · {e['date']} {e['time']}</div>
+      <div class="email-subject">{e.get('subject', '')}</div>
+      <div class="email-meta">{e.get('sender', '')} · {e.get('date', '')} {e.get('time', '')}</div>
     </div>"""
 
     html += """</div>
 
 <div class="card">
-  <h3>✅ 待办事项""" if todos else "<div class='card'><h3>✅ 待办事项</h3><p>无待办事项</p>"
+  <h3>✅ 待办事项"""
     if todos:
         html += f" ({len(todos)}项)</h3>"
         for t in todos[:10]:
             html += f"<div class='todo-item'>☐ {t}</div>"
     else:
-        html += "</div>"
+        html += "</h3><p>无待办事项</p>"
 
     html += """</div>
 
@@ -310,9 +383,7 @@ chart1.setOption({
     type: 'pie',
     radius: ['40%', '70%'],
     data: [
-      { value: """
-
-    html += str(len(grouped['urgent'])) + """, name: '紧急' },
+      { value: """ + str(len(grouped['urgent'])) + """, name: '紧急' },
       { value: """ + str(len(grouped['important'])) + """, name: '重要' },
       { value: """ + str(len(grouped['normal'])) + """, name: '常规' },
       { value: """ + str(len(grouped['reference'])) + """, name: '参考' }
@@ -327,10 +398,17 @@ def cmd_batch_action(args):
     mail_ids = args.mail_ids.split(",") if args.mail_ids else []
     action = args.action
 
+    if action == "mark-read":
+        for mid in mail_ids:
+            result = run_lark_cli([
+                "mail", "user_mailbox.messages", "patch",
+                "--params", json.dumps({"message_id": mid}),
+                "--data", json.dumps({"labels": ["READ"]})
+            ])
+
     print(f"\n🔧 批量操作: {action}")
     print(f"   邮件IDs: {mail_ids}")
     print(f"\n✅ 批量操作完成")
-    print(f"   (实际调用 lark-cli mail +batch-update)")
 
 def cmd_export_tasks(args):
     todos = load_cache("todos")
@@ -340,19 +418,19 @@ def cmd_export_tasks(args):
 
     print(f"\n📋 导出待办到任务")
     print("-" * 70)
+    created = 0
     for i, t in enumerate(todos, 1):
-        print(f"  {i}. {t.get('task', t)}")
-    print(f"\n✅ 已创建 {len(todos)} 个飞书任务")
-    print(f"   (实际调用 lark-cli task +create)")
+        task_text = t.get("task", str(t))
+        print(f"  {i}. {task_text}")
 
-def load_cache(name):
-    f = DATA_DIR / f"{name}.json"
-    if f.exists():
-        return json.loads(f.read_text())
-    return []
+        result = run_lark_cli([
+            "task", "+create",
+            "--summary", task_text,
+        ])
+        if result and result.get("ok"):
+            created += 1
 
-def save_cache(name, data):
-    (DATA_DIR / f"{name}.json").write_text(json.dumps(data, ensure_ascii=False, indent=2))
+    print(f"\n✅ 已创建 {created}/{len(todos)} 个飞书任务")
 
 def main():
     parser = argparse.ArgumentParser(description="Lark Mail Digest - 邮件智能摘要")

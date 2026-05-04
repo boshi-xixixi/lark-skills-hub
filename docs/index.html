@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lark Skills Hub — 9 个飞书 CLI Skills，让 AI 成为你的效率引擎</title>
-  <meta name="description" content="基于飞书 CLI 的 9 款 AI Agent Skills：智能日报、项目管理、视频评论、Sprint回顾、消息智能、内容聚合、考勤分析、邮件摘要、外勤追踪。">
+  <title>Lark Skills Hub — 11 个飞书 CLI Skills，让 AI 成为你的效率引擎</title>
+  <meta name="description" content="基于飞书 CLI 的 11 款 AI Agent Skills：智能日报、项目管理、视频评论、Sprint回顾、消息智能、内容聚合、考勤分析、邮件摘要、外勤追踪、用户画像、群聊分析。">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -336,6 +336,12 @@
     .skill-card.card-location::before { background: linear-gradient(90deg, var(--orange), var(--yellow)); }
     .skill-card.card-location:hover { box-shadow: 0 20px 60px var(--orange-glow); }
 
+    .skill-card.card-profile::before { background: linear-gradient(90deg, var(--teal), var(--indigo)); }
+    .skill-card.card-profile:hover { box-shadow: 0 20px 60px var(--teal-glow); }
+
+    .skill-card.card-group::before { background: linear-gradient(90deg, var(--purple), var(--pink)); }
+    .skill-card.card-group:hover { box-shadow: 0 20px 60px var(--purple-glow); }
+
     .skill-icon {
       width: 52px;
       height: 52px;
@@ -357,6 +363,8 @@
     .card-attendance .skill-icon { background: var(--pink-glow); }
     .card-mail .skill-icon { background: var(--green-glow); }
     .card-location .skill-icon { background: var(--orange-glow); }
+    .card-profile .skill-icon { background: var(--teal-glow); }
+    .card-group .skill-icon { background: var(--purple-glow); }
 
     .skill-number {
       position: absolute;
@@ -422,6 +430,8 @@
     .card-attendance .skill-features li .check { background: var(--pink-glow); color: var(--pink); }
     .card-mail .skill-features li .check { background: var(--green-glow); color: var(--green); }
     .card-location .skill-features li .check { background: var(--orange-glow); color: var(--orange); }
+    .card-profile .skill-features li .check { background: var(--teal-glow); color: var(--teal); }
+    .card-group .skill-features li .check { background: var(--purple-glow); color: var(--purple); }
 
     .skill-trigger {
       padding: 12px 16px;
@@ -682,9 +692,9 @@
     </h1>
 
     <p class="hero-sub">
-      9 款飞书 CLI Skills，涵盖日报生成、项目管理、视频评论分析、<br>
+      11 款飞书 CLI Skills，涵盖日报生成、项目管理、视频评论分析、<br>
       Sprint回顾、消息智能监听、内容聚合、考勤分析、邮件摘要、<br>
-      外勤追踪等多个垂直场景。<br>
+      外勤追踪、用户画像、群聊分析等多个垂直场景。<br>
       接入 Trae / Cursor / OpenClaw，一句话触发，零操作成本。
     </p>
 
@@ -836,6 +846,34 @@
           <li><span class="check">✓</span>多目的地智能路线优化</li>
         </ul>
         <div class="skill-trigger">试试说：<strong>"记录今天的拜访行程"</strong></div>
+      </div>
+
+      <div class="skill-card card-profile">
+        <div class="skill-number">10</div>
+        <div class="skill-icon">👤</div>
+        <h3 class="skill-name">Lark Profile</h3>
+        <p class="skill-tagline">用户画像分析 — 判断她是什么人、和你的关系如何</p>
+        <ul class="skill-features">
+          <li><span class="check">✓</span>搜索飞书用户 + 获取聊天记录</li>
+          <li><span class="check">✓</span>AI 分析关系亲密度、沟通频率</li>
+          <li><span class="check">✓</span>话题分类（工作/私人）</li>
+          <li><span class="check">✓</span>生成用户画像报告 + 互动建议</li>
+        </ul>
+        <div class="skill-trigger">试试说：<strong>"帮我分析一下张三这个人"</strong></div>
+      </div>
+
+      <div class="skill-card card-group">
+        <div class="skill-number">11</div>
+        <div class="skill-icon">💬</div>
+        <h3 class="skill-name">Lark Group Analysis</h3>
+        <p class="skill-tagline">群聊画像分析 — 洞察群的活跃度、话题分布和成员互动</p>
+        <ul class="skill-features">
+          <li><span class="check">✓</span>搜索并选择群聊</li>
+          <li><span class="check">✓</span>获取群成员和消息历史</li>
+          <li><span class="check">✓</span>活跃度排名、话题分类、时间规律</li>
+          <li><span class="check">✓</span>生成群聊画像报告 + 健康度评估</li>
+        </ul>
+        <div class="skill-trigger">试试说：<strong>"分析一下飞书 CLI 交流互助群"</strong></div>
       </div>
     </div>
   </section>
